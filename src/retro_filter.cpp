@@ -36,22 +36,30 @@ RetroFilter::RetroFilter(const Parameters& params) : rng_(time(0))
 
 void RetroFilter::applyToVideo(const Mat& frame, Mat& retroFrame)
 {
-    int col, row;
     Mat luminance;
     cvtColor(frame, luminance, CV_BGR2GRAY);
 
     // Add scratches
     Scalar meanColor = mean(luminance.row(luminance.rows / 2));
     Mat scratchColor(params_.frameSize, CV_8UC1, meanColor * 2.0);
+	//int RNG::uniform(int a, int b). Returns the next random number sampled from the uniform distribution.
     int x = rng_.uniform(0, params_.scratches.cols - luminance.cols);
     int y = rng_.uniform(0, params_.scratches.rows - luminance.rows);
 
-    for (row = 0; row < luminance.size().height; row += 1)
+    for (int i = 0; i < luminance.size().height; i++)
     {
-        for (col = 0; col < luminance.size().width; col += 1)
+        for (int j = 0; j < luminance.size().width; j++)
         {
-            uchar pix_color = params_.scratches.at<uchar>(row + y, col + x) ? (int)scratchColor.at<uchar>(row, col) : luminance.at<uchar>(row, col);
-            luminance.at<uchar>(row, col) = pix_color;
+			uchar pix_color;
+			if(params_.scratches.at<uchar>(i + y, j + x))
+			{
+				pix_color = (int)scratchColor.at<uchar>(i, j);
+			}
+			else
+			{
+				pix_color = luminance.at<uchar>(i, j);
+			}
+            luminance.at<uchar>(i, j) = pix_color;
         }
     }
 
@@ -62,21 +70,24 @@ void RetroFilter::applyToVideo(const Mat& frame, Mat& retroFrame)
 
     // Apply sepia-effect
     retroFrame.create(luminance.size(), CV_8UC3);
-    Mat hsv_pixel(1, 1, CV_8UC3);
-    Mat rgb_pixel(1, 1, CV_8UC3);
-    for (col = 0; col < luminance.size().width; col += 1)
+    Mat hsv_pixel(luminance.size().width, luminance.size().height, CV_8UC3);
+
+
+    /*for (int i = 0; i < luminance.size().width; i++)
     {
-        for (row = 0; row < luminance.size().height; row += 1)
-        {
-            hsv_pixel.ptr()[2] = cv::saturate_cast<uchar>(luminance.at<uchar>(row, col) * hsvScale_ + hsvOffset_);
+        for (int j = 0; j < luminance.size().height; j++)
+        {*/
+            hsv_pixel.ptr()[2] = cv::saturate_cast<uchar>(luminance.at<uchar>(j, i) * hsvScale_ + hsvOffset_);
             hsv_pixel.ptr()[0] = 19;
             hsv_pixel.ptr()[1] = 78;
 
-            cvtColor(hsv_pixel, rgb_pixel, CV_HSV2RGB);
+            cvtColor(hsv_pixel, hsv_pixel, CV_HSV2RGB);
 
-            retroFrame.at<Vec3b>(row, col)[0] = rgb_pixel.ptr()[2];
-            retroFrame.at<Vec3b>(row, col)[1] = rgb_pixel.ptr()[1];
-            retroFrame.at<Vec3b>(row, col)[2] = rgb_pixel.ptr()[0];
-        }
-    }
+            retroFrame.at<Vec3b>(j, i)[0] = hsv_pixel.ptr()[2];
+            retroFrame.at<Vec3b>(j, i)[1] = hsv_pixel.ptr()[1];
+            retroFrame.at<Vec3b>(j, i)[2] = hsv_pixel.ptr()[0];
+
+      /*  }
+    }*/
+	
 }
